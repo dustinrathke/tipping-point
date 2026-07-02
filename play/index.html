@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1b2a">
+<title>Tipping Point</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>TIPPING POINT</h1>
+    <div class="hbtns">
+      <button id="helpbtn" title="How to play">ⓘ</button>
+      <button id="restartbtn" title="Restart">↻</button>
+    </div>
+  </header>
+
+  <div id="hud">
+    <div class="chip" id="chip-temp"><span class="lbl">🌡</span><span id="temp">+1.10°</span></div>
+    <div class="chip" id="chip-co2"><span class="lbl">CO₂</span><span id="co2">410</span><span id="co2net" class="sub"></span></div>
+    <div class="chip"><span class="lbl">💰</span><span id="money">20</span></div>
+    <div class="chip"><span class="lbl">👥</span><span id="pop">120</span><span class="sub" id="popgoal">/1500</span></div>
+  </div>
+  <div id="hud2">
+    <div class="chip sm" id="chip-power"><span class="lbl">⚡</span><span id="power">2/1</span></div>
+    <div class="chip sm" id="chip-food"><span class="lbl">🍞</span><span id="food">2/1</span></div>
+    <div class="chip sm"><span class="lbl">Turn</span><span id="turn">1</span></div>
+    <div id="tempbar"><div id="tempfill"></div><div class="tick t1"></div><div class="tick t2"></div><div class="tick t3"></div></div>
+  </div>
+
+  <canvas id="board"></canvas>
+
+  <div id="log"></div>
+
+  <div id="palette"></div>
+  <button id="endturn">End Turn ▸</button>
+
+  <div id="help" class="overlay hidden">
+    <div class="panel">
+      <h2>The Island's Rules</h2>
+      <ul>
+        <li>🏠 Towns need <b>1 ⚡ power</b> and <b>1 🍞 food</b>. Happy towns pay taxes and grow.</li>
+        <li>🏭 Coal is the cheapest power you'll ever regret.</li>
+        <li>🌲 Forests and the sea breathe in carbon — but a warm sea breathes shallow, and hot forests burn.</li>
+        <li>🌡 Warming lags behind carbon. By the time you feel it, more is already on the way.</li>
+        <li>🌊 Low ground floods first. Hills are forever.</li>
+        <li>🔨 You can clear what you've built. Some choices can be walked back. Slowly.</li>
+      </ul>
+      <p class="goal">Reach <b>1,500 islanders</b> while staying under <b>+1.6°</b> — and keep it that way.</p>
+      <button id="helpclose">Begin</button>
+    </div>
+  </div>
+
+  <div id="end" class="overlay hidden">
+    <div class="panel">
+      <h2 id="endtitle"></h2>
+      <p id="endtext"></p>
+      <p id="endstats" class="stats"></p>
+      <div class="row">
+        <button id="endrestart">Play Again</button>
+        <button id="endcontinue" class="ghost hidden">Keep Playing</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="game.js" defer></script>
+</body>
+</html>

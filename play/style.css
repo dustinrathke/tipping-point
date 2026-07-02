@@ -1,0 +1,110 @@
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #0d1b2a;
+  --panel: #1b263b;
+  --panel2: #24344d;
+  --text: #e0e1dd;
+  --dim: #9db0c4;
+  --ok: #7cc46e;
+  --warn: #f2b950;
+  --bad: #ef6461;
+  --accent: #64b6e7;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+#app {
+  width: 100%;
+  max-width: 440px;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+header { display: flex; justify-content: space-between; align-items: center; }
+h1 { font-size: 17px; letter-spacing: 4px; font-weight: 800; color: var(--accent); }
+.hbtns button {
+  background: var(--panel); color: var(--dim); border: none; border-radius: 8px;
+  width: 34px; height: 34px; font-size: 16px; margin-left: 6px; cursor: pointer;
+}
+
+#hud, #hud2 { display: flex; gap: 6px; align-items: center; }
+.chip {
+  background: var(--panel); border-radius: 8px; padding: 6px 9px;
+  display: flex; align-items: baseline; gap: 5px; font-size: 14px; font-weight: 700;
+  flex: 1; justify-content: center; white-space: nowrap;
+}
+.chip.sm { flex: 0 0 auto; font-size: 12px; padding: 4px 8px; }
+.chip .lbl { font-weight: 400; font-size: 11px; color: var(--dim); }
+.chip .sub { font-weight: 400; font-size: 10px; color: var(--dim); }
+.chip.deficit { outline: 1px solid var(--bad); }
+#temp.ok { color: var(--ok); } #temp.warn { color: var(--warn); } #temp.bad { color: var(--bad); }
+#co2net.up { color: var(--bad); } #co2net.down { color: var(--ok); }
+
+#tempbar {
+  flex: 1; height: 8px; background: var(--panel); border-radius: 4px; position: relative; overflow: hidden;
+}
+#tempfill {
+  height: 100%; width: 10%; border-radius: 4px;
+  background: linear-gradient(90deg, #7cc46e, #f2b950 55%, #ef6461);
+  transition: width .5s;
+}
+.tick { position: absolute; top: 0; width: 2px; height: 100%; background: rgba(224,225,221,.55); }
+.tick.t1 { left: 30.4%; }  /* +1.6° goal */
+.tick.t2 { left: 43.5%; }  /* +1.9° seas rise */
+.tick.t3 { left: 73.9%; }  /* +2.6° runaway */
+
+#board { border-radius: 10px; align-self: center; background: #14507a; cursor: pointer; }
+
+#log { min-height: 52px; font-size: 12px; line-height: 1.45; color: var(--dim); padding: 0 2px; }
+#log .l0 { color: var(--text); }
+#log .l1 { opacity: .75; } #log .l2 { opacity: .5; } #log .l3 { opacity: .3; }
+
+#palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+#palette button {
+  background: var(--panel); border: 1px solid transparent; border-radius: 10px;
+  color: var(--text); padding: 7px 2px 5px; cursor: pointer; font-size: 11px;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 54px;
+}
+#palette button .ic { font-size: 19px; }
+#palette button .cost { color: var(--warn); font-size: 10px; }
+#palette button.sel { border-color: var(--accent); background: var(--panel2); }
+#palette button:disabled { opacity: .35; cursor: default; }
+
+#endturn {
+  background: var(--accent); color: #0d1b2a; font-weight: 800; font-size: 15px;
+  border: none; border-radius: 10px; padding: 13px; cursor: pointer;
+}
+#endturn:active { transform: scale(.98); }
+
+.overlay {
+  position: fixed; inset: 0; background: rgba(13,27,42,.88);
+  display: flex; align-items: center; justify-content: center; z-index: 10; padding: 20px;
+}
+.overlay.hidden, .hidden { display: none; }
+.panel {
+  background: var(--panel); border-radius: 14px; padding: 22px; max-width: 380px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.panel h2 { font-size: 18px; color: var(--accent); }
+.panel ul { list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.45; }
+.panel .goal { font-size: 13px; color: var(--warn); }
+.panel .stats { font-size: 12px; color: var(--dim); }
+.panel button {
+  background: var(--accent); color: #0d1b2a; font-weight: 800; border: none;
+  border-radius: 10px; padding: 12px; font-size: 14px; cursor: pointer; flex: 1;
+}
+.panel button.ghost { background: var(--panel2); color: var(--text); }
+.panel .row { display: flex; gap: 8px; }

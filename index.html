@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tipping Point — a strategy game where the sea remembers what you burn</title>
+<meta name="description" content="A free turn-based island strategy game about growth, energy, and consequences that arrive late. Play in your browser — no account, no downloads, no ads.">
+<meta property="og:title" content="Tipping Point">
+<meta property="og:description" content="Grow an island. Keep it livable. The sea remembers what you burn.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏝️</text></svg>">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0d1b2a; --panel: #1b263b; --panel2: #24344d;
+  --text: #e0e1dd; --dim: #9db0c4; --accent: #64b6e7; --warn: #f2b950;
+  --ocean: #14507a; --coast: #d9c58b; --grass: #6a994e; --forest: #386641; --hill: #7d8597;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+}
+main { max-width: 880px; margin: 0 auto; padding: 48px 24px 32px; }
+section { margin-bottom: 56px; }
+h1 { font-size: 40px; letter-spacing: 8px; font-weight: 800; color: var(--accent); }
+h2 { font-size: 22px; color: var(--accent); margin-bottom: 14px; }
+p { margin-bottom: 12px; }
+em { color: var(--warn); font-style: italic; }
+
+.hero { display: flex; gap: 40px; align-items: center; flex-wrap: wrap; margin-bottom: 64px; }
+.hero-text { flex: 1 1 380px; }
+.tag { font-size: 19px; margin: 14px 0 24px; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.btn {
+  display: inline-block; padding: 14px 22px; border-radius: 12px; font-weight: 800;
+  font-size: 16px; text-decoration: none; cursor: pointer;
+}
+.btn.play { background: var(--accent); color: #0d1b2a; }
+.btn.play:hover { filter: brightness(1.1); }
+.btn.soon { background: var(--panel); color: var(--dim); cursor: default; font-weight: 600; }
+.btn.ghost { background: var(--panel2); color: var(--text); }
+.fine { font-size: 13px; color: var(--dim); }
+
+.island {
+  flex: 0 0 auto; display: grid; grid-template-columns: repeat(6, 42px);
+  gap: 3px; padding: 10px; background: var(--ocean); border-radius: 14px;
+}
+.island .t { width: 42px; height: 42px; border-radius: 6px; background: var(--ocean);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.island .o  { background: #155580; }
+.island .o2 { background: var(--ocean); }
+.island .c  { background: var(--coast); }
+.island .g  { background: var(--grass); }
+.island .f  { background: var(--forest); }
+.island .h  { background: var(--hill); }
+
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--panel2); }
+th { color: var(--dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+ul.checks { list-style: none; margin-bottom: 18px; }
+ul.checks li { padding-left: 26px; position: relative; margin-bottom: 8px; }
+ul.checks li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 800; }
+
+.card { background: var(--panel); border-radius: 14px; padding: 24px; }
+dl.facts { display: grid; grid-template-columns: 130px 1fr; gap: 6px 16px; font-size: 14px; margin-bottom: 16px; }
+dl.facts dt { color: var(--dim); }
+
+footer { border-top: 1px solid var(--panel2); padding-top: 20px; font-size: 13px; color: var(--dim); text-align: center; }
+footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="hero-text">
+      <h1>TIPPING POINT</h1>
+      <p class="tag">Grow an island. Keep it livable.<br><em>The sea remembers what you burn.</em></p>
+      <div class="cta">
+        <a class="btn play" href="play/">▶ Play free in your browser</a>
+        <span class="btn soon"> App Store — coming soon</span>
+      </div>
+      <p class="fine">Turn-based strategy · 10–15 minute runs · no account, no ads, no tracking</p>
+    </div>
+    <div class="island" aria-hidden="true">
+      <div class="t o"></div><div class="t o2"></div><div class="t c"></div><div class="t c"></div><div class="t o"></div><div class="t o2"></div>
+      <div class="t o2"></div><div class="t c"></div><div class="t g"></div><div class="t f">🌲</div><div class="t c">🌬️</div><div class="t o"></div>
+      <div class="t c"></div><div class="t g">🌾</div><div class="t g">🏠</div><div class="t h"></div><div class="t f">🌲</div><div class="t c"></div>
+      <div class="t c"></div><div class="t g">🏠</div><div class="t g">🏭</div><div class="t g">🌾</div><div class="t c"></div><div class="t o2"></div>
+      <div class="t o"></div><div class="t c"></div><div class="t f">🌲</div><div class="t g">🏠</div><div class="t c"></div><div class="t o"></div>
+      <div class="t o2"></div><div class="t o"></div><div class="t c"></div><div class="t c">🌬️</div><div class="t o2"></div><div class="t o"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Cheap power now, or a livable island later</h2>
+    <p>Every turn you build — towns, farms, coal, wind, solar, forests. Coal is the cheapest, strongest
+    choice on the board, and for ten turns nothing goes wrong. Then farms wither, forests burn,
+    and the sea starts taking your lowest ground, tile by tile.</p>
+    <p>Warming lags behind carbon. By the time you feel it, more is already on the way. That isn't a
+    message on a loading screen — it's the rule that decides whether you win.</p>
+  </section>
+
+  <section>
+    <h2>The mechanics are the lesson</h2>
+    <table>
+      <tr><th>In the game</th><th>In the world</th></tr>
+      <tr><td>Temperature keeps climbing after you stop emitting</td><td>Committed warming</td></tr>
+      <tr><td>The ocean absorbs less carbon as it warms</td><td>Weakening carbon sinks</td></tr>
+      <tr><td>Wildfires burn forests <b>and</b> release their carbon</td><td>Feedback loops</td></tr>
+      <tr><td>The sea floods low ground at temperature thresholds</td><td>Tipping points, sea-level rise</td></tr>
+      <tr><td>Coal is the best deal on the board, every single turn</td><td>Why the transition is hard</td></tr>
+    </table>
+    <p style="margin-top:14px">The game never says "climate change." It doesn't have to.</p>
+  </section>
+
+  <section class="card">
+    <h2>For classrooms</h2>
+    <ul class="checks">
+      <li>Free in the browser — runs on Chromebooks, iPads, phones, anything</li>
+      <li>No logins, no accounts, no student data collected</li>
+      <li>10-minute rounds fit inside a class period</li>
+      <li>Guide maps mechanics to NGSS and AP&nbsp;Environmental&nbsp;Science</li>
+    </ul>
+    <a class="btn ghost" href="teachers.html">📄 Classroom guide</a>
+  </section>
+
+  <section class="card">
+    <h2>Press kit</h2>
+    <dl class="facts">
+      <dt>Developer</dt><dd>Solo developer, Wisconsin, USA</dd>
+      <dt>Platforms</dt><dd>Browser (out now, free) · iOS (coming soon, $2.99)</dd>
+      <dt>Genre</dt><dd>Turn-based strategy / management</dd>
+      <dt>Session</dt><dd>10–15 minutes per run</dd>
+      <dt>Engine</dt><dd>Hand-rolled JavaScript + Canvas, no tracking, ~40 KB</dd>
+      <dt>Contact</dt><dd>winter_familia@proton.me</dd>
+    </dl>
+    <p><b>Boilerplate:</b> Tipping Point is a turn-based strategy game about growth, energy, and
+    consequences that arrive late. Players grow an island settlement to 1,500 people while a small,
+    honest climate simulation runs underneath: warming lags emissions, the ocean sink weakens,
+    wildfires feed back, and the sea takes the low ground first. Coal is always the cheapest choice —
+    that's the point. The game teaches tipping points without ever saying "climate change."</p>
+    <p class="fine">Review copies: App Store promo codes available on request. Screenshots and GIFs on request.</p>
+  </section>
+
+  <footer>
+    © 2026 · <a href="mailto:winter_familia@proton.me">winter_familia@proton.me</a> · <a href="play/">Play Tipping Point</a>
+  </footer>
+</main>
+</body>
+</html>
