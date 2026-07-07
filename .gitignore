@@ -2,3 +2,5 @@ node_modules/
 ios/
 .DS_Store
 Thumbs.db
+marketing/
+itch-build.zip

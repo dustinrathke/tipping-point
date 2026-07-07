@@ -5,15 +5,15 @@ but every power choice feeds a carbon simulation, and the consequences arrive on
 
 The climate teaching is entirely indirect, baked into the mechanics:
 
-| Mechanic | Real-world concept |
-|---|---|
-| Temperature chases CO₂ with a lag (~18%/turn) | Committed warming — by the time you feel it, more is coming |
-| Ocean absorbs less CO₂ as it warms | Weakening carbon sinks |
-| Wildfires destroy forests **and** release their carbon | Feedback loops / tipping cascades |
-| Coal: cheapest, most powerful, delayed cost | Fossil lock-in economics |
-| Sea floods low tiles at temperature thresholds | Sea-level rise, coastal risk |
-| "Clear" tool lets you retire coal, forests draw down slowly | Transition + drawdown are possible but slow |
-| World CO₂ drift you can't control | You're not the only emitter — but sinks you build still matter |
+| Mechanic                                                    | Real-world concept                                              |
+| ----------------------------------------------------------- | --------------------------------------------------------------- |
+| Temperature chases CO₂ with a lag (~18%/turn)              | Committed warming — by the time you feel it, more is coming    |
+| Ocean absorbs less CO₂ as it warms                         | Weakening carbon sinks                                          |
+| Wildfires destroy forests**and** release their carbon | Feedback loops / tipping cascades                               |
+| Coal: cheapest, most powerful, delayed cost                 | Fossil lock-in economics                                        |
+| Sea floods low tiles at temperature thresholds              | Sea-level rise, coastal risk                                    |
+| "Clear" tool lets you retire coal, forests draw down slowly | Transition + drawdown are possible but slow                     |
+| World CO₂ drift you can't control                          | You're not the only emitter — but sinks you build still matter |
 
 Nothing in the game says "climate change." The sea just remembers what you burn.
 
@@ -44,7 +44,7 @@ gh repo create tipping-point --public --source . --push
 gh api -X POST "repos/{owner}/tipping-point/pages" -f "source[branch]=main" -f "source[path]=/"
 ```
 
-Site appears at `https://<username>.github.io/tipping-point/` within a few minutes.
+Site appears at `https://dustinrathke.github.io/tipping-point/` within a few minutes.
 
 **After deploying:** replace the `YOURUSERNAME` placeholder in `teachers.html` with the real
 URL, commit, and push again.

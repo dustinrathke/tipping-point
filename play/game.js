@@ -2,20 +2,38 @@
 
 /* ============================== config ============================== */
 
-const COLS = 8, ROWS = 10;
+let COLS = 8, ROWS = 10;
 const START = { money: 20, pop: 120, co2: 410, temp: 1.1 };
-const WIN_POP = 1500, WIN_TEMP = 1.6;
-const LOSE_TEMP = 2.6;
-const POP_PER_TOWN = 300;
+const WIN_TEMP = 1.6, LOSE_TEMP = 2.6, POP_PER_TOWN = 300;
+
+// paste real URLs when live (Ko-fi, App Store, itch.io) — empty = hidden
+const LINKS = { tip: '', ios: '', itch: '' };
 
 const TOOLS = {
-  town:   { icon: '🏠', name: 'Town',   cost: 8,  desc: 'Needs 1 ⚡ and 1 🍞 each turn. Happy towns pay taxes and grow.' },
-  farm:   { icon: '🌾', name: 'Farm',   cost: 4,  desc: 'Feeds 2 towns. Dislikes hot, dry years.' },
-  coal:   { icon: '🏭', name: 'Coal',   cost: 6,  desc: 'Powers 3 towns. Cheap. The sky keeps the receipts.' },
-  wind:   { icon: '🌬️', name: 'Wind',  cost: 8,  desc: 'Powers 2 towns. Coast or hills only.' },
-  solar:  { icon: '☀️', name: 'Solar', cost: 10, desc: 'Powers 2 towns. Clean, pricey, works anywhere sunny.' },
-  forest: { icon: '🌲', name: 'Forest', cost: 3,  desc: 'Breathes in carbon every turn. Burns in hot years.' },
-  demo:   { icon: '🔨', name: 'Clear',  cost: 2,  desc: 'Remove any building — even the ones that seemed like a good idea.' },
+  town:   { icon: '🏠', name: 'Town',    cost: 8,  desc: 'Needs 1 ⚡ and 1 🍞 each turn. Happy towns pay taxes and grow.' },
+  farm:   { icon: '🌾', name: 'Farm',    cost: 4,  desc: 'Feeds 2 towns. Dislikes hot, dry years.' },
+  coal:   { icon: '🏭', name: 'Coal',    cost: 6,  pow: 3, desc: 'Powers 3 towns. Cheap. The sky keeps the receipts.' },
+  wind:   { icon: '🌬️', name: 'Wind',   cost: 8,  pow: 2, desc: 'Powers 2 towns. Coast or hills only.' },
+  solar:  { icon: '☀️', name: 'Solar',  cost: 10, pow: 2, desc: 'Powers 2 towns. Clean — and it gets cheaper every few years.' },
+  nuke:   { icon: '☢️', name: 'Nuclear', cost: 20, pow: 6, desc: 'Powers 6 towns, zero carbon. Costly to build, priceless to keep.' },
+  forest: { icon: '🌲', name: 'Forest',  cost: 3,  desc: 'Breathes in carbon every turn. Burns in hot years.' },
+  wall:   { icon: '🧱', name: 'Seawall', cost: 6,  desc: 'Holds back one stage of rising sea. Adaptation, not a cure.' },
+  demo:   { icon: '🔨', name: 'Clear',   cost: 2,  desc: 'Remove a building or seawall — even ones that seemed like a good idea.' },
+};
+
+const MODES = {
+  simple: {
+    key: 'simple', title: '🏝 ISLAND', blurb: 'The essentials. Coal is cheap and the sea is patient — for a while.',
+    cols: 8, rows: 10, winPop: 1500, minGrassy: 15,
+    tools: ['town', 'farm', 'coal', 'wind', 'solar', 'forest', 'demo'],
+    incomeBase: 1, storms: false, acid: false, solarLearning: false,
+  },
+  complex: {
+    key: 'complex', title: '🌀 ARCHIPELAGO', blurb: 'Storms, seawalls, nuclear power, souring seas. The full machine.',
+    cols: 9, rows: 12, winPop: 2500, minGrassy: 26,
+    tools: ['town', 'farm', 'coal', 'wind', 'solar', 'nuke', 'forest', 'wall', 'demo'],
+    incomeBase: 3, storms: true, acid: true, solarLearning: true,
+  },
 };
 
 const SIM = {
@@ -23,27 +41,25 @@ const SIM = {
   coalCO2: 2.5, forestAbs: 0.25,
   oceanBase: 2.0, oceanZero: 2.35, oceanSpan: 1.25, // ocean sink weakens as it warms
   tempPerPpm: 1 / 95, tempLag: 0.18,               // temperature chases CO2 with delay
-  incomeBase: 1, incomeTown: 4,
-  farmFood: 2, coalPow: 3, windPow: 2, solarPow: 2,
+  incomeTown: 4,
+  farmFood: 2,
   popGrow: 12, popShrink: 20,
+  stormTemp: 1.7, stormP: 0.12,
   co2Min: 350, co2Max: 999, tempMin: 0.9, tempMax: 3.2,
-};
-
-const TERRAIN_COLORS = {
-  ocean: '#14507a', ocean2: '#155580',
-  coast: '#d9c58b', grass: '#6a994e', forest: '#386641', hill: '#7d8597',
 };
 
 /* ============================== state ============================== */
 
-let map = [], state = null;
+let map = [], state = null, mode = null;
 let selectedTool = null, hover = null;
 let tilePx = 48, dpr = 1;
+let effects = [];
 
 const $ = id => document.getElementById(id);
 const canvas = $('board'), ctx = canvas.getContext('2d');
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const tileAt = (c, r) => map[r * COLS + c];
+const effElev = t => t.elev + (t.wall ? 1 : 0);
 
 /* ============================== map generation ============================== */
 
@@ -53,22 +69,26 @@ function genMap() {
     m = [];
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
-        const dx = (c - (COLS - 1) / 2) / 4.3;
-        const dy = (r - (ROWS - 1) / 2) / 5.4;
+        const dx = (c - (COLS - 1) / 2) / (COLS * 0.54);
+        const dy = (r - (ROWS - 1) / 2) / (ROWS * 0.54);
         const v = Math.hypot(dx, dy) + Math.random() * 0.30;
+        const gBand = mode.minGrassy > 20 ? 0.67 : 0.62; // Archipelago needs more buildable land
         let t, elev;
-        if (v < 0.33) { t = 'hill'; elev = 3; }
-        else if (v < 0.62) { t = 'grass'; elev = v < 0.47 ? 2 : 1; }
-        else if (v < 0.84) { t = 'coast'; elev = 0; }
+        if (v < 0.31) { t = 'hill'; elev = 3; }
+        else if (v < gBand) { t = 'grass'; elev = v < 0.47 ? 2 : 1; }
+        else if (v < 0.85) { t = 'coast'; elev = 0; }
         else { t = 'ocean'; elev = -1; }
         if (t === 'grass' && Math.random() < 0.22) t = 'forest';
-        m.push({ t, elev, b: null, c, r });
+        m.push({ t, elev, b: null, wall: false, c, r });
       }
     }
+    const n = COLS * ROWS;
     const land = m.filter(x => x.t !== 'ocean').length;
     const hills = m.filter(x => x.t === 'hill').length;
     const coast = m.filter(x => x.t === 'coast').length;
-    if (land >= 34 && land <= 58 && hills >= 2 && coast >= 8) break;
+    const grassy = m.filter(x => x.t === 'grass' || x.t === 'forest').length;
+    if (land >= n * 0.42 && land <= n * 0.72 && hills >= 2 && coast >= COLS
+        && grassy >= mode.minGrassy) break;
   }
   return m;
 }
@@ -86,12 +106,23 @@ function nearestTile(pred) {
 
 /* ============================== game setup ============================== */
 
+function startGame(key) {
+  mode = MODES[key];
+  COLS = mode.cols; ROWS = mode.rows;
+  sizeCanvas();
+  buildPalette();
+  newGame();
+  $('title').classList.add('hidden');
+  if (!localStorage.getItem('tpSeenHelp')) $('help').classList.remove('hidden');
+}
+
 function newGame() {
   map = genMap();
+  effects = [];
   state = {
     money: START.money, pop: START.pop, co2: START.co2, temp: START.temp,
     turn: 1, floodStage: 0, coalBuilt: 0, peakTemp: START.temp,
-    over: false, won: false, log: [],
+    over: false, won: false, acidWarned: false, log: [],
   };
   selectedTool = null;
   const t1 = nearestTile(t => t.t === 'grass' && !t.b); if (t1) t1.b = 'town';
@@ -102,10 +133,23 @@ function newGame() {
   refresh();
 }
 
+function showTitle() {
+  state = null;
+  $('end').classList.add('hidden');
+  $('best-simple').textContent = bestFor('simple');
+  $('best-complex').textContent = bestFor('complex');
+  $('title').classList.remove('hidden');
+}
+
+function bestFor(key) {
+  const v = localStorage.getItem('tpBest_' + key);
+  return v ? `★ best: won in ${v} turns` : 'not yet won';
+}
+
 /* ============================== bookkeeping ============================== */
 
 function counts() {
-  const k = { towns: 0, farms: 0, coal: 0, wind: 0, solar: 0, planted: 0, natForest: 0, land: 0 };
+  const k = { towns: 0, farms: 0, coal: 0, wind: 0, solar: 0, nuke: 0, planted: 0, natForest: 0, land: 0 };
   for (const t of map) {
     if (t.t !== 'ocean') k.land++;
     if (t.t === 'forest') k.natForest++;
@@ -118,9 +162,22 @@ function oceanAbs(temp) {
   return SIM.oceanBase * clamp((SIM.oceanZero - temp) / SIM.oceanSpan, 0, 1);
 }
 
+function baseIncome() {
+  // in Archipelago the fishing economy sours with the sea
+  if (mode.acid) return mode.incomeBase * clamp((520 - state.co2) / 110, 0, 1);
+  return mode.incomeBase;
+}
+
+function getCost(tool) {
+  if (tool === 'solar' && mode.solarLearning && state) {
+    return Math.max(6, TOOLS.solar.cost - Math.floor((state.turn - 1) / 6));
+  }
+  return TOOLS[tool].cost;
+}
+
 function rates() {
   const k = counts();
-  const power = k.coal * SIM.coalPow + k.wind * SIM.windPow + k.solar * SIM.solarPow;
+  const power = k.coal * TOOLS.coal.pow + k.wind * TOOLS.wind.pow + k.solar * TOOLS.solar.pow + k.nuke * TOOLS.nuke.pow;
   const food = k.farms * SIM.farmFood;
   const happy = Math.min(k.towns, power, food);
   const drift = Math.min(SIM.driftMax, SIM.drift0 + SIM.driftRamp * (state.turn - 1));
@@ -132,17 +189,22 @@ function rates() {
 /* ============================== turn simulation ============================== */
 
 function endTurn() {
-  if (state.over) return;
+  if (!state || state.over) return;
   const r = rates(), k = r.k;
 
   // economy & population
-  state.money += SIM.incomeBase + r.happy * SIM.incomeTown;
+  const base = baseIncome();
+  state.money += Math.round(base + r.happy * SIM.incomeTown);
   const unhappy = k.towns - r.happy;
   state.pop += r.happy * SIM.popGrow - unhappy * SIM.popShrink;
   state.pop = clamp(state.pop, 0, k.towns * POP_PER_TOWN);
   if (unhappy > 0) {
     const lack = r.power < k.towns ? 'power' : 'food';
     say(`⚠️ ${unhappy} town${unhappy > 1 ? 's' : ''} went dark — not enough ${lack}.`);
+  }
+  if (mode.acid && !state.acidWarned && base < mode.incomeBase * 0.55) {
+    state.acidWarned = true;
+    say('🐟 The reefs are quieter. Fishing brings in less than it used to.');
   }
 
   // carbon: emissions minus sinks, temperature chases with a lag
@@ -153,6 +215,7 @@ function endTurn() {
 
   droughts();
   wildfires();
+  storms();
   floods();
 
   state.turn++;
@@ -166,6 +229,7 @@ function droughts() {
   for (const t of map) {
     if (t.b === 'farm' && Math.random() < p) {
       t.b = null;
+      addFx('fire', t.c, t.r);
       say('🥀 A farm withered in the heat.');
     }
   }
@@ -178,27 +242,57 @@ function wildfires() {
     if ((t.t === 'forest' || t.b === 'forest') && Math.random() < p) {
       if (t.b === 'forest') t.b = null; else t.t = 'grass';
       state.co2 = clamp(state.co2 + 3, SIM.co2Min, SIM.co2Max);
+      addFx('fire', t.c, t.r);
       say('🔥 Wildfire — a forest burned, its carbon back in the sky.');
     }
   }
 }
 
+function storms() {
+  if (!mode.storms || state.temp < SIM.stormTemp) return;
+  if (Math.random() >= SIM.stormP * (state.temp - 1.6)) return;
+  const low = map.filter(t => t.t !== 'ocean' && t.elev <= 1);
+  if (!low.length) return;
+  const c0 = low[Math.floor(Math.random() * low.length)];
+  let hit = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const c = c0.c + dc, r = c0.r + dr;
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) continue;
+      const t = tileAt(c, r);
+      if (t.t === 'ocean') continue;
+      addFx('storm', c, r);
+      if (t.b && Math.random() < 0.6) { t.b = null; hit++; }
+    }
+  }
+  say(hit > 0
+    ? `🌀 A storm tore through the lowlands — ${hit} building${hit > 1 ? 's' : ''} lost.`
+    : '🌀 A storm raked the coast. This time, it spared you.');
+  shake();
+}
+
 function floods() {
   const stage = Math.floor(Math.max(0, state.temp - 1.55) / 0.35);
   if (stage <= state.floodStage) return;
-  let drowned = 0;
+  let drowned = 0, held = 0;
   for (const t of map) {
-    if (t.elev >= 0 && t.elev < stage) {
-      t.t = 'ocean'; t.elev = -1; t.b = null; drowned++;
+    if (t.elev < 0) continue;
+    if (effElev(t) < stage) {
+      addFx('ripple', t.c, t.r);
+      t.t = 'ocean'; t.elev = -1; t.b = null; t.wall = false; drowned++;
+    } else if (t.wall && t.elev < stage) {
+      held++;
     }
   }
   state.floodStage = stage;
   if (drowned > 0) say(`🌊 The sea rose. ${drowned} tile${drowned > 1 ? 's' : ''} drowned.`);
+  if (held > 0) say(`🧱 ${held} seawall${held > 1 ? 's' : ''} held the line.`);
+  if (drowned > 0) shake();
 }
 
 function checkEnd() {
   const k = counts();
-  if (!state.won && state.pop >= WIN_POP && state.temp <= WIN_TEMP) {
+  if (!state.won && state.pop >= mode.winPop && state.temp <= WIN_TEMP) {
     state.won = true;
     showEnd(true);
     return;
@@ -212,11 +306,13 @@ function checkEnd() {
 
 function canPlace(tool, t) {
   if (t.t === 'ocean') return false;
-  if (tool === 'demo') return !!t.b;
+  if (tool === 'demo') return !!t.b || t.wall;
+  if (tool === 'wall') return !t.wall && t.elev <= 2;
   if (t.b) return false;
   switch (tool) {
     case 'wind': return t.t === 'coast' || t.t === 'hill';
     case 'solar': return t.t === 'grass' || t.t === 'coast' || t.t === 'forest';
+    case 'nuke': return t.t === 'grass' || t.t === 'coast' || t.t === 'forest';
     case 'forest': return t.t === 'grass';
     default: return t.t === 'grass' || t.t === 'forest'; // town, farm, coal
   }
@@ -224,12 +320,14 @@ function canPlace(tool, t) {
 
 function place(tool, t) {
   if (!canPlace(tool, t)) { say('✋ Can’t build that here.'); refresh(); return; }
-  const cost = TOOLS[tool].cost;
+  const cost = getCost(tool);
   if (state.money < cost) { say('💰 Not enough money.'); refresh(); return; }
   state.money -= cost;
   if (tool === 'demo') {
-    t.b = null;
+    if (t.b) t.b = null; else t.wall = false;
     say('🔨 Cleared.');
+  } else if (tool === 'wall') {
+    t.wall = true;
   } else {
     if (t.t === 'forest') {
       t.t = 'grass';
@@ -239,6 +337,7 @@ function place(tool, t) {
     t.b = tool;
     if (tool === 'coal') state.coalBuilt++;
   }
+  addFx('pop', t.c, t.r);
   refresh();
 }
 
@@ -266,21 +365,53 @@ function rrect(x, y, w, h, r) {
   ctx.closePath();
 }
 
-function render() {
+function hexLerp(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ch = sh => Math.round(((pa >> sh) & 255) + (((pb >> sh) & 255) - ((pa >> sh) & 255)) * t);
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+
+function palette() {
+  // the island visibly dries out as it warms
+  const heat = state ? clamp((state.temp - 1.1) / 1.5, 0, 1) : 0;
+  return {
+    ocean:  hexLerp('#14507a', '#123c5c', heat * 0.6),
+    ocean2: hexLerp('#155580', '#134163', heat * 0.6),
+    coast:  hexLerp('#d9c58b', '#e3cf96', heat * 0.4),
+    grass:  hexLerp('#6a994e', '#ad9d51', heat),
+    forest: hexLerp('#386641', '#6e6f3c', heat),
+    hill:   hexLerp('#7d8597', '#8d8d85', heat * 0.5),
+  };
+}
+
+function render(ts) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!state) return;
   const gap = 2, rad = 4;
+  const P = palette();
   const nextStageTemp = 1.55 + 0.35 * (state.floodStage + 1);
   const atRisk = state.temp > nextStageTemp - 0.15;
 
   for (const t of map) {
     const x = t.c * tilePx + gap / 2, y = t.r * tilePx + gap / 2;
     const s = tilePx - gap;
-    let color = t.t === 'ocean'
-      ? ((t.c + t.r) % 2 ? TERRAIN_COLORS.ocean : TERRAIN_COLORS.ocean2)
-      : TERRAIN_COLORS[t.t];
-    ctx.fillStyle = color;
+    const isOcean = t.t === 'ocean';
+    ctx.fillStyle = isOcean ? ((t.c + t.r) % 2 ? P.ocean : P.ocean2) : P[t.t];
     rrect(x, y, s, s, rad);
     ctx.fill();
+
+    if (isOcean) {
+      // slow shimmer
+      const a = 0.02 + 0.03 * (0.5 + 0.5 * Math.sin(ts / 900 + t.c * 7 + t.r * 13));
+      ctx.fillStyle = `rgba(255,255,255,${a})`;
+      rrect(x, y, s, s, rad);
+      ctx.fill();
+    } else {
+      // subtle depth: light top edge
+      ctx.fillStyle = 'rgba(255,255,255,.07)';
+      rrect(x, y, s, s * 0.28, rad);
+      ctx.fill();
+    }
 
     if (t.t === 'hill') {
       ctx.fillStyle = 'rgba(255,255,255,.25)';
@@ -294,6 +425,7 @@ function render() {
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000'; // opaque — Chromium applies fillStyle alpha to color emoji
     if (t.t === 'forest' && !t.b) {
       ctx.font = `${Math.round(s * 0.5)}px serif`;
       ctx.fillText('🌲', x + s / 2, y + s / 2 + 1);
@@ -303,9 +435,30 @@ function render() {
       ctx.fillText(TOOLS[t.b].icon, x + s / 2, y + s / 2 + 1);
     }
 
-    // flood warning: low tiles shimmer when the next surge is near
-    if (atRisk && t.elev >= 0 && t.elev < state.floodStage + 1) {
-      ctx.strokeStyle = 'rgba(100,182,231,.85)';
+    // coal smoke drifting upward
+    if (t.b === 'coal') {
+      for (let i = 0; i < 2; i++) {
+        const ph = (ts / 1800 + i * 0.5 + (t.c * 3 + t.r * 5) * 0.13) % 1;
+        const sx = x + s * 0.5 + Math.sin(ts / 700 + i * 2 + t.c) * s * 0.07;
+        const sy = y + s * 0.18 - ph * s * 0.45;
+        ctx.fillStyle = `rgba(200,208,218,${0.28 * (1 - ph)})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, s * 0.07 * (1 + ph * 1.5), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    if (t.wall) {
+      ctx.strokeStyle = '#d9c58b';
+      ctx.lineWidth = 3;
+      rrect(x + 2, y + 2, s - 4, s - 4, rad);
+      ctx.stroke();
+    }
+
+    // flood warning: low tiles outlined when the next surge is near
+    if (atRisk && t.elev >= 0 && effElev(t) < state.floodStage + 1) {
+      const a = 0.5 + 0.35 * Math.sin(ts / 300);
+      ctx.strokeStyle = `rgba(100,182,231,${a})`;
       ctx.lineWidth = 2;
       rrect(x + 1, y + 1, s - 2, s - 2, rad);
       ctx.stroke();
@@ -318,6 +471,52 @@ function render() {
       ctx.stroke();
     }
   }
+
+  // transient effects
+  const now = performance.now();
+  effects = effects.filter(f => now - f.t0 < 1200);
+  for (const f of effects) {
+    const age = now - f.t0;
+    const x = f.c * tilePx, y = f.r * tilePx, s = tilePx;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000';
+    if (f.type === 'fire') {
+      ctx.globalAlpha = Math.max(0, 1 - age / 1200);
+      ctx.font = `${Math.round(s * 0.7)}px serif`;
+      ctx.fillText('🔥', x + s / 2, y + s / 2 - (age / 1200) * s * 0.3);
+    } else if (f.type === 'storm') {
+      ctx.globalAlpha = Math.max(0, 1 - age / 1000);
+      ctx.font = `${Math.round(s * 0.7)}px serif`;
+      ctx.fillText('🌀', x + s / 2, y + s / 2);
+    } else if (f.type === 'ripple') {
+      ctx.globalAlpha = Math.max(0, 1 - age / 1000);
+      ctx.strokeStyle = '#64b6e7';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x + s / 2, y + s / 2, (age / 1000) * s * 0.8 + 2, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (f.type === 'pop') {
+      ctx.globalAlpha = Math.max(0, 0.5 * (1 - age / 250));
+      ctx.fillStyle = '#ffffff';
+      rrect(x + 1, y + 1, s - 2, s - 2, 4);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function addFx(type, c, r) { effects.push({ type, c, r, t0: performance.now() }); }
+
+function shake() {
+  canvas.classList.remove('shake');
+  void canvas.offsetWidth;
+  canvas.classList.add('shake');
+}
+
+function loop(ts) {
+  render(ts);
+  requestAnimationFrame(loop);
 }
 
 /* ============================== HUD & log ============================== */
@@ -334,6 +533,7 @@ function renderLog() {
 }
 
 function updateHUD() {
+  if (!state) return;
   const r = rates();
   const tempEl = $('temp');
   tempEl.textContent = `+${state.temp.toFixed(2)}°`;
@@ -341,13 +541,13 @@ function updateHUD() {
   $('tempfill').style.width = `${((state.temp - SIM.tempMin) / (SIM.tempMax - SIM.tempMin)) * 100}%`;
 
   $('co2').textContent = Math.round(state.co2);
-  const net = r.net;
   const netEl = $('co2net');
-  netEl.textContent = `${net >= 0 ? '+' : ''}${net.toFixed(1)}/turn`;
-  netEl.className = 'sub ' + (net > 0 ? 'up' : 'down');
+  netEl.textContent = `${r.net >= 0 ? '+' : ''}${r.net.toFixed(1)}/turn`;
+  netEl.className = 'sub ' + (r.net > 0 ? 'up' : 'down');
 
   $('money').textContent = state.money;
   $('pop').textContent = state.pop;
+  $('popgoal').textContent = `/${mode.winPop}`;
   $('turn').textContent = state.turn;
 
   $('power').textContent = `${r.power}/${r.k.towns}`;
@@ -355,15 +555,16 @@ function updateHUD() {
   $('food').textContent = `${r.food}/${r.k.towns}`;
   $('chip-food').classList.toggle('deficit', r.food < r.k.towns);
 
-  for (const [key, tool] of Object.entries(TOOLS)) {
+  for (const key of mode.tools) {
     const btn = $(`tool-${key}`);
-    btn.disabled = state.money < tool.cost;
+    const cost = getCost(key);
+    btn.querySelector('.cost').textContent = `$${cost}`;
+    btn.disabled = state.money < cost;
     btn.classList.toggle('sel', selectedTool === key);
   }
 }
 
 function refresh() {
-  render();
   renderLog();
   updateHUD();
 }
@@ -389,13 +590,22 @@ function showEnd(won, why) {
     text.textContent = 'The sea took the island back, one patient tile at a time.';
   }
   $('endstats').textContent =
-    `Turns: ${state.turn} · Peak temp: +${state.peakTemp.toFixed(2)}° · Coal plants built: ${state.coalBuilt}`;
+    `${mode.title.slice(2)} · Turns: ${state.turn} · Peak temp: +${state.peakTemp.toFixed(2)}° · Coal plants built: ${state.coalBuilt}`;
   $('endcontinue').classList.toggle('hidden', !won);
+
+  const links = [];
+  if (LINKS.ios) links.push(`<a href="${LINKS.ios}" target="_blank" rel="noopener">📱 Get it on iOS</a>`);
+  if (LINKS.itch) links.push(`<a href="${LINKS.itch}" target="_blank" rel="noopener">🎮 On itch.io</a>`);
+  if (LINKS.tip) links.push(`<a href="${LINKS.tip}" target="_blank" rel="noopener">☕ Tip the developer</a>`);
+  $('endlinks').innerHTML = links.join(' · ');
+  $('endlinks').classList.toggle('hidden', links.length === 0);
+
   $('end').classList.remove('hidden');
 
   if (won) {
-    const best = Number(localStorage.getItem('tpBestTurns') || 0);
-    if (!best || state.turn < best) localStorage.setItem('tpBestTurns', String(state.turn));
+    const key = 'tpBest_' + mode.key;
+    const best = Number(localStorage.getItem(key) || 0);
+    if (!best || state.turn < best) localStorage.setItem(key, String(state.turn));
   }
 }
 
@@ -404,7 +614,9 @@ function showEnd(won, why) {
 function buildPalette() {
   const pal = $('palette');
   pal.innerHTML = '';
-  for (const [key, tool] of Object.entries(TOOLS)) {
+  pal.style.gridTemplateColumns = `repeat(${mode.tools.length > 7 ? 5 : 4}, 1fr)`;
+  for (const key of mode.tools) {
+    const tool = TOOLS[key];
     const btn = document.createElement('button');
     btn.id = `tool-${key}`;
     btn.innerHTML = `<span class="ic">${tool.icon}</span>${tool.name}<span class="cost">$${tool.cost}</span>`;
@@ -430,7 +642,7 @@ function tileFromEvent(e) {
 }
 
 canvas.addEventListener('click', e => {
-  if (state.over) return;
+  if (!state || state.over) return;
   const t = tileFromEvent(e);
   if (!t) return;
   if (selectedTool) {
@@ -438,32 +650,36 @@ canvas.addEventListener('click', e => {
   } else if (t.t !== 'ocean') {
     const what = t.b ? TOOLS[t.b].name : t.t === 'forest' ? 'Wild forest' : t.t[0].toUpperCase() + t.t.slice(1);
     const heights = ['shore-level', 'low ground', 'high ground', 'hilltop'];
-    say(`${what} — ${heights[t.elev]}.`);
+    say(`${what} — ${heights[t.elev]}${t.wall ? ', walled' : ''}.`);
     refresh();
   }
 });
 
 canvas.addEventListener('mousemove', e => {
-  const t = tileFromEvent(e);
-  if (t !== hover) { hover = t; render(); }
+  if (!state) return;
+  hover = tileFromEvent(e);
 });
-canvas.addEventListener('mouseleave', () => { hover = null; render(); });
+canvas.addEventListener('mouseleave', () => { hover = null; });
 
 $('endturn').addEventListener('click', endTurn);
-$('restartbtn').addEventListener('click', newGame);
+$('restartbtn').addEventListener('click', () => { if (mode) newGame(); });
+$('menubtn').addEventListener('click', showTitle);
 $('helpbtn').addEventListener('click', () => $('help').classList.remove('hidden'));
+$('titlehelp').addEventListener('click', () => $('help').classList.remove('hidden'));
 $('helpclose').addEventListener('click', () => {
   $('help').classList.add('hidden');
   localStorage.setItem('tpSeenHelp', '1');
 });
 $('endrestart').addEventListener('click', newGame);
+$('endmenu').addEventListener('click', showTitle);
 $('endcontinue').addEventListener('click', () => $('end').classList.add('hidden'));
+$('mode-simple').addEventListener('click', () => startGame('simple'));
+$('mode-complex').addEventListener('click', () => startGame('complex'));
 
-window.addEventListener('resize', () => { sizeCanvas(); render(); });
+window.addEventListener('resize', () => { if (mode) sizeCanvas(); });
 
 /* ============================== init ============================== */
 
 sizeCanvas();
-buildPalette();
-newGame();
-if (!localStorage.getItem('tpSeenHelp')) $('help').classList.remove('hidden');
+showTitle();
+requestAnimationFrame(loop);

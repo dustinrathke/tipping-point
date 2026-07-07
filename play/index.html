@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0d1b2a">
 <title>Tipping Point</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏝️</text></svg>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,6 +16,7 @@
     <div class="hbtns">
       <button id="helpbtn" title="How to play">ⓘ</button>
       <button id="restartbtn" title="Restart">↻</button>
+      <button id="menubtn" title="Menu">⌂</button>
     </div>
   </header>
 
@@ -38,6 +40,25 @@
   <div id="palette"></div>
   <button id="endturn">End Turn ▸</button>
 
+  <div id="title" class="overlay">
+    <div class="panel titlepanel">
+      <h2 class="logo">TIPPING POINT</h2>
+      <p class="tagline">Grow an island. Keep it livable.<br><em>The sea remembers what you burn.</em></p>
+      <button class="modecard" id="mode-simple">
+        <span class="mt">🏝 ISLAND</span>
+        <span class="mb">The essentials. Coal is cheap and the sea is patient — for a while.</span>
+        <span class="best" id="best-simple"></span>
+      </button>
+      <button class="modecard" id="mode-complex">
+        <span class="mt">🌀 ARCHIPELAGO</span>
+        <span class="mb">Storms, seawalls, nuclear power, souring seas. The full machine.</span>
+        <span class="best" id="best-complex"></span>
+      </button>
+      <button id="titlehelp" class="linky">how to play</button>
+      <p class="fine">free · no ads · your data never leaves your island</p>
+    </div>
+  </div>
+
   <div id="help" class="overlay hidden">
     <div class="panel">
       <h2>The Island's Rules</h2>
@@ -48,8 +69,10 @@
         <li>🌡 Warming lags behind carbon. By the time you feel it, more is already on the way.</li>
         <li>🌊 Low ground floods first. Hills are forever.</li>
         <li>🔨 You can clear what you've built. Some choices can be walked back. Slowly.</li>
+        <li>🌀 <b>Archipelago</b> adds storms that raid the lowlands, 🧱 seawalls that hold back one stage of sea,
+            ☢️ carbon-free nuclear power, and a fishing economy that sours as the sea does.</li>
       </ul>
-      <p class="goal">Reach <b>1,500 islanders</b> while staying under <b>+1.6°</b> — and keep it that way.</p>
+      <p class="goal">Reach <b>1,500 islanders</b> (Island) or <b>2,500</b> (Archipelago) while staying under <b>+1.6°</b> — and keep it that way.</p>
       <button id="helpclose">Begin</button>
     </div>
   </div>
@@ -62,7 +85,9 @@
       <div class="row">
         <button id="endrestart">Play Again</button>
         <button id="endcontinue" class="ghost hidden">Keep Playing</button>
+        <button id="endmenu" class="ghost">Menu</button>
       </div>
+      <p id="endlinks" class="endlinks hidden"></p>
     </div>
   </div>
 </div>
